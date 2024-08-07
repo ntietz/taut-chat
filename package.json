@@ -1,0 +1,17 @@
+{
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.13",
+    "esbuild": "0.21.1",
+    "tailwindcss": "^3.4.3"
+  },
+  "scripts": {
+    "build": "esbuild frontend/main.ts --bundle --outfile=static/main.js --target=es2017",
+    "build-watch": "esbuild frontend/main.ts --bundle --outfile=static/main.js --target=es2017 --watch",
+    "css": "tailwindcss build -o static/css/tailwind.css",
+    "css-watch": "tailwindcss build -o static/css/tailwind.css --watch"
+  },
+  "dependencies": {
+    "tailwindcss": "^3.4.3"
+  }
+}
