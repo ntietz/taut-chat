@@ -8,7 +8,11 @@ import (
 	"github.com/ntietz/taut-chat/pkg/web/views"
 )
 
+
+
 func CreateServer() *echo.Echo {
+    h := views.NewHandler()
+
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -20,7 +24,7 @@ func CreateServer() *echo.Echo {
 	e.Renderer = templateRenderer
     e.Static("/static", "static")
 
-	e.GET("/", views.Index)
+	e.GET("/", h.Index)
 
 	return e
 }

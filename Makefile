@@ -13,3 +13,6 @@ typescript:
 
 typescript-watch:
 	npm run build-watch
+
+typesense:
+	./scripts/launch_typesense.sh
