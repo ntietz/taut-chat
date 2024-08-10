@@ -1,0 +1,30 @@
+{{ template "base.html" . }}
+{{ define "content" }}
+
+<main class="h-full tracking-tight bg-amber-50">
+<div class="h-full flex flex-col justify-around">
+
+  <div class="bg-white p-2 border-4 border-black shadow-thicc-pink w-fit flex flex-col ml-auto mr-auto">
+    <h1 class="ml-auto mr-auto font-semibold tracking-tight text-xl">
+      Sign in to Taut
+    </h1>
+    <form class="flex flex-col space-y-2">
+
+      <fieldset class="flex flex-col">
+        <label for="username">Username</label>
+        <input type="text" id="username" password="password" placeholder="Choose a display name"></input>
+      </fieldset>
+
+      <fieldset class="flex flex-col">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Enter a password"></input>
+      </fieldset>
+
+      <button type="submit" class="ml-auto mr-auto p-1 w-fit bg-blue-100 border-2 border-black hover:bg-blue-200">Log in</button>
+    </form>
+  </div>
+
+</div>
+</main>
+
+{{ end }}

@@ -25,6 +25,7 @@ func CreateServer() *echo.Echo {
     e.Static("/static", "static")
 
 	e.GET("/", h.Index)
+	e.GET("/login", h.Login)
 
 	return e
 }
