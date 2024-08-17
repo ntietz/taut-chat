@@ -12,5 +12,5 @@ type TemplateRenderer struct {
 }
 
 func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+    return t.templates.Lookup(name).Execute(w, data)
 }

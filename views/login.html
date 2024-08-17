@@ -1,6 +1,4 @@
-{{ template "base.html" . }}
-{{ define "content" }}
-
+{{ template "html_open" }}
 <main class="h-full tracking-tight bg-amber-50">
 <div class="h-full flex flex-col justify-around">
 
@@ -8,11 +6,11 @@
     <h1 class="ml-auto mr-auto font-semibold tracking-tight text-xl">
       Sign in to Taut
     </h1>
-    <form class="flex flex-col space-y-2">
+    <form class="flex flex-col space-y-2" action="/login" method="POST">
 
       <fieldset class="flex flex-col">
         <label for="username">Username</label>
-        <input type="text" id="username" password="password" placeholder="Choose a display name"></input>
+        <input type="text" id="username" name="username" placeholder="Choose a display name"></input>
       </fieldset>
 
       <fieldset class="flex flex-col">
@@ -26,5 +24,4 @@
 
 </div>
 </main>
-
-{{ end }}
+{{ template "html_close" }}
