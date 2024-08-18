@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/typesense/typesense-go/v2/typesense"
 )
@@ -25,24 +24,24 @@ func NewHandler() *Handler {
 }
 
 func (h *Handler) Index(c echo.Context) error {
-	_, ok := c.Get("user").(*jwt.Token)
-	if !ok {
+	usernameCookie, err := c.Cookie("username")
+	if err != nil {
         fmt.Println("failed to get user")
 		return c.Redirect(http.StatusFound, "/login")
 	}
 
-	return c.Render(http.StatusOK, "index.html", "World!")
+    username := usernameCookie.Value
+
+	return c.Render(http.StatusOK, "index.html", username)
 }
 
 type LoginForm struct {
 	Username string `form:"username" validate:"required"`
-	Password string `form:"password" validate:"required"`
 }
 
 func (h *Handler) Login(c echo.Context) error {
 	loginForm := LoginForm{
 		Username: "",
-		Password: "",
 	}
 	return c.Render(http.StatusOK, "login.html", loginForm)
 }
@@ -50,47 +49,26 @@ func (h *Handler) Login(c echo.Context) error {
 func (h *Handler) LoginAttempt(c echo.Context) error {
 	loginForm := LoginForm{
 		Username: "",
-		Password: "",
 	}
 
 	if err := c.Bind(&loginForm); err != nil {
 		return c.Render(http.StatusOK, "login.html", loginForm)
 	}
-	if loginForm.Username == "" || loginForm.Password == "" {
-		fmt.Println("Username/password must be non-empty; username?", loginForm.Username, "password?", loginForm.Password)
+	if loginForm.Username == "" {
+		fmt.Println("Username must be non-empty; username?", loginForm.Username)
 		return c.Render(http.StatusOK, "login.html", loginForm)
 	}
 
-	loginSuccess, err := CheckLogin(h.Ts, loginForm.Username, loginForm.Password)
+	_, err := CreateUser(h.Ts, loginForm.Username)
 	if err != nil {
 		return err
 	}
 
-	if loginSuccess {
-		// TODO: set cookie
+    cookie := new(http.Cookie)
+    cookie.Name = "username"
+    cookie.Value = loginForm.Username
+    cookie.Expires = time.Now().Add(24 * time.Hour)
+    c.SetCookie(cookie)
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"username": loginForm.Username,
-			// this is a demo example, so no expiration, YOLO
-		})
-
-		// Sign and get the complete encoded token as a string using the secret
-		tokenString, err := token.SignedString([]byte("secret"))
-		// if the signing fails, just fail closed onto login screen... YOLO
-		if err != nil {
-            fmt.Println("failed to sign", err)
-			return c.Redirect(http.StatusFound, "/login")
-		}
-
-		cookie := new(http.Cookie)
-		cookie.Name = "authy"
-		cookie.Value = tokenString
-		cookie.Expires = time.Now().Add(24 * time.Hour)
-		c.SetCookie(cookie)
-
-
-		return c.Redirect(http.StatusFound, "/")
-	} else {
-		return c.Render(http.StatusOK, "login.html", loginForm)
-	}
+    return c.Redirect(http.StatusFound, "/")
 }

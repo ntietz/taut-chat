@@ -2,20 +2,16 @@ package web
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/typesense/typesense-go/v2/typesense"
 	"github.com/typesense/typesense-go/v2/typesense/api"
 	"github.com/typesense/typesense-go/v2/typesense/api/pointer"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
 	ID           string `json:"id"`
 	Handle       string `json:"handle"`
-	PasswordHash string `json:"password_hash"`
 	Credits      int64  `json:"credits"`
 }
 
@@ -28,7 +24,7 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-func CheckLogin(ts *typesense.Client, handle string, password string) (bool, error) {
+func CreateUser(ts *typesense.Client, handle string) (bool, error) {
 	ctx := context.Background()
 	query := api.SearchCollectionParams{
 		Q:       pointer.String(handle),
@@ -42,18 +38,10 @@ func CheckLogin(ts *typesense.Client, handle string, password string) (bool, err
 	count := *matchingUsers.Found
 
 	if count == 0 {
-		id, err := uuid.NewV7()
-		if err != nil {
-			return false, err
-		}
-		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			return false, err
-		}
+        id := handle
 		user := User{
-			ID:           id.String(),
+			ID:           id,
 			Handle:       handle,
-			PasswordHash: string(hash),
 			Credits:      100,
 		}
         fmt.Println("Created new user")
@@ -61,20 +49,10 @@ func CheckLogin(ts *typesense.Client, handle string, password string) (bool, err
 		if err != nil {
 			return false, err
 		}
-
         return true, nil
 	} else {
-		// There's a bug here where if there are multiple users with the same
-		// handle somehow, there will be multiple records. YOLO!
-
-		hash, ok := (*(*matchingUsers.Hits)[0].Document)["password_hash"].(string)
-        if !ok {
-            return false, errors.New("invalid password hash")
-        }
-        matched := (bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil)
-        fmt.Println("password matched?", matched, ", password?", password)
-        return matched, nil
-	}
+        return false, nil
+    }
 }
 
 func DropCollections(ts *typesense.Client) error {
@@ -99,10 +77,6 @@ func CreateCollections(ts *typesense.Client) error {
 		Fields: []api.Field{
 			{
 				Name: "handle",
-				Type: "string",
-			},
-			{
-				Name: "password_hash",
 				Type: "string",
 			},
 			{
