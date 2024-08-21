@@ -15,16 +15,20 @@ func CreateServer() *echo.Echo {
 		fmt.Println("", err)
 	}
 
-    fh := FragmentsHandler{
-    	Ts: h.Ts,
-    }
+	fh := FragmentsHandler{
+		Ts: h.Ts,
+	}
 
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	templates := template.Must(template.New("").Funcs(template.FuncMap{
+		"html_unsafely": HtmlShenanigans,
+	}).ParseGlob("views/*.html"))
+
 	templateRenderer := &TemplateRenderer{
-		templates: template.Must(template.ParseGlob("views/*.html")),
+		templates: templates,
 	}
 
 	e.Renderer = templateRenderer
@@ -32,9 +36,10 @@ func CreateServer() *echo.Echo {
 
 	e.GET("/", h.Index)
 	e.GET("/login", h.Login)
+	e.GET("/search", h.Search)
+	e.GET("/start-chat/:handle", h.StartChat)
 	e.POST("/login", h.LoginAttempt)
-    e.GET("/start-chat/:handle", h.StartChat)
-    e.POST("/send-chat/:handle", h.SendChat)
+	e.POST("/send-chat/:handle", h.SendChat)
 
 	e.GET("/fragment/users", fh.UserList)
 	e.GET("/fragment/chat", fh.ChatWindow)

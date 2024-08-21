@@ -1,0 +1,13 @@
+{{ define "header" }}
+  <div class="bg-white outline-4 outline outline-black flex flex-row p-2 justify-between">
+    <div>Taut Chat</div>
+    <form class="flex flex-row" method="GET" action="/search">
+      <input id="search-box" name="query" type="text" value="{{ .Query }}">
+      <button class="bg-flagblue p-2 h-full">
+        Search
+      </button>
+
+    </form>
+    <div><emph>{{ .CurrentUser }}</emph></div>
+  </div>
+{{ end }}

@@ -27,6 +27,7 @@ type IndexPage struct {
 	CurrentUser string
 	FocusedChat string
 	Messages    []Message
+	Query       string
 }
 
 func (h *Handler) Index(c echo.Context) error {
@@ -46,10 +47,12 @@ func (h *Handler) Index(c echo.Context) error {
 
 	username := usernameCookie.Value
 	focusedChat := ""
-    fmt.Println("fcc?", focusedChatCookie)
+	fmt.Println("fcc?", focusedChatCookie)
 	if focusedChatCookie != nil {
 		focusedChat = focusedChatCookie.Value
-	}
+	} else {
+        focusedChat = username
+    }
 
 	messages, err := ListMessages(h.Ts, username, focusedChat)
 	if err != nil {
@@ -61,10 +64,55 @@ func (h *Handler) Index(c echo.Context) error {
 		Handles:     handles,
 		CurrentUser: username,
 		FocusedChat: focusedChat,
-        Messages: messages,
+		Messages:    messages,
+		Query:       "",
 	}
 
 	return c.Render(http.StatusOK, "index.html", viewData)
+}
+
+type SearchPage struct {
+	Query       string
+	Handles     []string
+	CurrentUser string
+	Messages    []Message
+}
+
+func (h *Handler) Search(c echo.Context) error {
+	usernameCookie, err := c.Cookie("username")
+	if err != nil {
+		fmt.Println("failed to get user")
+		return c.Redirect(http.StatusFound, "/login")
+	}
+	username := usernameCookie.Value
+
+	handles, err := ListUserHandles(h.Ts)
+	if err != nil {
+		fmt.Println("failed to get handles")
+		return err
+	}
+
+	query := ""
+	err = echo.QueryParamsBinder(c).String("query", &query).BindError()
+	if err != nil {
+		fmt.Println("failed to get query")
+		return err
+	}
+
+	messages, err := SearchMessages(h.Ts, username, query)
+	if err != nil {
+		fmt.Println("failed to get messages")
+		return err
+	}
+
+	viewData := SearchPage{
+		Query:       query,
+		Handles:     handles,
+		CurrentUser: username,
+		Messages:    messages,
+	}
+
+	return c.Render(http.StatusOK, "search.html", viewData)
 }
 
 func (h *Handler) StartChat(c echo.Context) error {
@@ -75,11 +123,11 @@ func (h *Handler) StartChat(c echo.Context) error {
 		return err
 	}
 
- 	cookie := new(http.Cookie)
+	cookie := new(http.Cookie)
 	cookie.Name = "focusedChat"
-    cookie.Value = handle
+	cookie.Value = handle
 	cookie.Expires = time.Now().Add(24 * time.Hour)
-    cookie.Path = "/"
+	cookie.Path = "/"
 	c.SetCookie(cookie)
 
 	return c.Redirect(http.StatusFound, "/")

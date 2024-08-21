@@ -72,11 +72,53 @@ func CreateMessage(ts *typesense.Client, from string, to string, content string)
 		Sender:    from,
 		Recipient: to,
 		Content:   content,
-        Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().Unix(),
 	}
 
 	_, err = ts.Collection("messages").Documents().Create(ctx, message)
 	return err
+}
+
+func SearchMessages(ts *typesense.Client, currentUser string, query string) ([]Message, error) {
+	ctx := context.Background()
+
+	filter := fmt.Sprintf("from_id:=%s || to_id:=%s", currentUser, currentUser)
+	qparams := api.SearchCollectionParams{
+		Q:        pointer.String(query),
+		QueryBy:  pointer.String("content"),
+		FilterBy: pointer.String(filter),
+		SortBy:   pointer.String("timestamp:desc"),
+        HighlightStartTag: pointer.String("<b>"),
+        HighlightEndTag: pointer.String("</b>"),
+        HighlightFullFields: pointer.String("content"),
+
+	}
+
+	messageRecords, err := ts.Collection("messages").Documents().Search(ctx, &qparams)
+
+	if err != nil {
+		fmt.Println("err?", err)
+		return nil, err
+	}
+	fmt.Println("search. err?", err, "found?", (*(*messageRecords).Found))
+
+	messages := make([]Message, 0)
+
+	for _, messageRecord := range *(*messageRecords).Hits {
+        content := fmt.Sprintf("%v", (*(*messageRecord.Highlights)[0].Value))
+        fmt.Println("messageRecord. highlights?", len(*messageRecord.Highlights))
+		message := Message{
+			ID:        (*messageRecord.Document)["id"].(string),
+			Sender:    (*messageRecord.Document)["from_id"].(string),
+			Recipient: (*messageRecord.Document)["to_id"].(string),
+			Content:   content,
+			Timestamp: int64((*messageRecord.Document)["timestamp"].(float64)),
+		}
+		messages = append(messages, message)
+	}
+
+	return messages, nil
+
 }
 
 func ListUserHandles(ts *typesense.Client) ([]string, error) {
@@ -86,7 +128,7 @@ func ListUserHandles(ts *typesense.Client) ([]string, error) {
 		QueryBy: pointer.String("handle"),
 	}
 	userRecords, err := ts.Collection("users").Documents().Search(ctx, &query)
-	fmt.Println("err?", err, "found?", (*(*userRecords).Found))
+	fmt.Println("handles. err?", err, "found?", (*(*userRecords).Found))
 	if err != nil {
 		return nil, err
 	}
@@ -102,25 +144,25 @@ func ListUserHandles(ts *typesense.Client) ([]string, error) {
 }
 
 func ListMessages(ts *typesense.Client, from string, to string) ([]Message, error) {
-    msgs, err := ListMessagesOneWay(ts, from, to)
-    if err != nil {
-        return nil, err
-    }
+	msgs, err := ListMessagesOneWay(ts, from, to)
+	if err != nil {
+		return nil, err
+	}
 
-    if from != to {
-        msgsSwapped, err := ListMessagesOneWay(ts, to, from)
-        if err != nil {
-            return nil, err
-        }
+	if from != to {
+		msgsSwapped, err := ListMessagesOneWay(ts, to, from)
+		if err != nil {
+			return nil, err
+		}
 
-        msgs = slices.Concat(msgs, msgsSwapped)
-    }
+		msgs = slices.Concat(msgs, msgsSwapped)
+	}
 
-    slices.SortFunc(msgs, func(a Message, b Message) int {
-        return int(a.Timestamp - b.Timestamp)
-    })
+	slices.SortFunc(msgs, func(a Message, b Message) int {
+		return int(a.Timestamp - b.Timestamp)
+	})
 
-    return msgs, nil
+	return msgs, nil
 }
 
 func ListMessagesOneWay(ts *typesense.Client, from string, to string) ([]Message, error) {
@@ -132,16 +174,16 @@ func ListMessagesOneWay(ts *typesense.Client, from string, to string) ([]Message
 		Q:        pointer.String(to),
 		QueryBy:  pointer.String("to_id"),
 		FilterBy: pointer.String(filter),
-        SortBy: pointer.String("timestamp:desc"),
+		SortBy:   pointer.String("timestamp:desc"),
 	}
 
 	messageRecords, err := ts.Collection("messages").Documents().Search(ctx, &query)
 
 	if err != nil {
-        fmt.Println("err?", err)
+		fmt.Println("err?", err)
 		return nil, err
 	}
-	fmt.Println("err?", err, "found?", (*(*messageRecords).Found))
+	fmt.Println("list messages. err?", err, "found?", (*(*messageRecords).Found))
 
 	messages := make([]Message, 0)
 
@@ -156,7 +198,7 @@ func ListMessagesOneWay(ts *typesense.Client, from string, to string) ([]Message
 		messages = append(messages, message)
 	}
 
-    return messages, nil
+	return messages, nil
 
 }
 
@@ -204,6 +246,10 @@ func CreateCollections(ts *typesense.Client) error {
 				Name: "to_id",
 				Type: "string",
 			},
+            {
+                Name: "content",
+                Type: "string",
+            },
 			{
 				Name: "timestamp",
 				Type: "int64",
@@ -216,7 +262,7 @@ func CreateCollections(ts *typesense.Client) error {
 		return err
 	}
 
-    _, err = ts.Collections().Create(ctx, messageSchema)
+	_, err = ts.Collections().Create(ctx, messageSchema)
 	if err != nil {
 		return err
 	}
