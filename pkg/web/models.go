@@ -107,17 +107,20 @@ func ListMessages(ts *typesense.Client, from string, to string) ([]Message, erro
         return nil, err
     }
 
-    msgsSwapped, err := ListMessagesOneWay(ts, to, from)
-    if err != nil {
-        return nil, err
+    if from != to {
+        msgsSwapped, err := ListMessagesOneWay(ts, to, from)
+        if err != nil {
+            return nil, err
+        }
+
+        msgs = slices.Concat(msgs, msgsSwapped)
     }
 
-    messages := slices.Concat(msgs, msgsSwapped)
-    slices.SortFunc(messages, func(a Message, b Message) int {
+    slices.SortFunc(msgs, func(a Message, b Message) int {
         return int(a.Timestamp - b.Timestamp)
     })
 
-    return messages, nil
+    return msgs, nil
 }
 
 func ListMessagesOneWay(ts *typesense.Client, from string, to string) ([]Message, error) {
