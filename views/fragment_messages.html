@@ -1,0 +1,20 @@
+{{ define "fragment_messages" }}
+
+<div class="h-full w-full outline-2 outline-gray-500 flex flex-col"
+  hx-get="/fragment/messages"
+  hx-trigger="every 1s"
+  hx-swap="outerHTML"
+>
+  {{ range .Messages }}
+    <div>
+      <b>{{ .Sender }}:</b>
+      <span>{{ .Content }}</span>
+    </div>
+  {{ end }}
+
+</div>
+
+
+{{ end }}
+
+{{ template "fragment_messages" . }}

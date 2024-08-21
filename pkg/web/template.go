@@ -1,6 +1,8 @@
 package web
 
 import (
+	"errors"
+	"fmt"
 	"html/template"
 	"io"
 
@@ -12,5 +14,11 @@ type TemplateRenderer struct {
 }
 
 func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-    return t.templates.Lookup(name).Execute(w, data)
+    template := t.templates.Lookup(name)
+    if template == nil {
+        msg := fmt.Sprintf("missing template '%s'", name)
+        return errors.New(msg)
+    }
+    return template.Execute(w, data)
+
 }

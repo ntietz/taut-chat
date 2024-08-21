@@ -3,16 +3,19 @@ package web
 import (
 	"context"
 	"fmt"
+	"slices"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/typesense/typesense-go/v2/typesense"
 	"github.com/typesense/typesense-go/v2/typesense/api"
 	"github.com/typesense/typesense-go/v2/typesense/api/pointer"
 )
 
 type User struct {
-	ID           string `json:"id"`
-	Handle       string `json:"handle"`
-	Credits      int64  `json:"credits"`
+	ID      string `json:"id"`
+	Handle  string `json:"handle"`
+	Credits int64  `json:"credits"`
 }
 
 type Message struct {
@@ -21,7 +24,8 @@ type Message struct {
 	Sender    string `json:"from_id"`
 	Recipient string `json:"to_id"`
 
-	Content string `json:"content"`
+	Content   string `json:"content"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 func CreateUser(ts *typesense.Client, handle string) (bool, error) {
@@ -38,21 +42,119 @@ func CreateUser(ts *typesense.Client, handle string) (bool, error) {
 	count := *matchingUsers.Found
 
 	if count == 0 {
-        id := handle
+		id := handle
 		user := User{
-			ID:           id,
-			Handle:       handle,
-			Credits:      100,
+			ID:      id,
+			Handle:  handle,
+			Credits: 100,
 		}
-        fmt.Println("Created new user")
+		fmt.Println("Created new user")
 		_, err = ts.Collection("users").Documents().Create(ctx, user)
 		if err != nil {
 			return false, err
 		}
-        return true, nil
+		return true, nil
 	} else {
-        return false, nil
+		return false, nil
+	}
+}
+
+func CreateMessage(ts *typesense.Client, from string, to string, content string) error {
+	ctx := context.Background()
+
+	id, err := uuid.NewV7()
+	if err != nil {
+		return err
+	}
+
+	message := Message{
+		ID:        id.String(),
+		Sender:    from,
+		Recipient: to,
+		Content:   content,
+        Timestamp: time.Now().Unix(),
+	}
+
+	_, err = ts.Collection("messages").Documents().Create(ctx, message)
+	return err
+}
+
+func ListUserHandles(ts *typesense.Client) ([]string, error) {
+	ctx := context.Background()
+	query := api.SearchCollectionParams{
+		Q:       pointer.String("*"),
+		QueryBy: pointer.String("handle"),
+	}
+	userRecords, err := ts.Collection("users").Documents().Search(ctx, &query)
+	fmt.Println("err?", err, "found?", (*(*userRecords).Found))
+	if err != nil {
+		return nil, err
+	}
+
+	handles := make([]string, 0)
+
+	for _, userRecord := range *(*userRecords).Hits {
+		handle := (*userRecord.Document)["handle"].(string)
+		handles = append(handles, handle)
+	}
+
+	return handles, nil
+}
+
+func ListMessages(ts *typesense.Client, from string, to string) ([]Message, error) {
+    msgs, err := ListMessagesOneWay(ts, from, to)
+    if err != nil {
+        return nil, err
     }
+
+    msgsSwapped, err := ListMessagesOneWay(ts, to, from)
+    if err != nil {
+        return nil, err
+    }
+
+    messages := slices.Concat(msgs, msgsSwapped)
+    slices.SortFunc(messages, func(a Message, b Message) int {
+        return int(a.Timestamp - b.Timestamp)
+    })
+
+    return messages, nil
+}
+
+func ListMessagesOneWay(ts *typesense.Client, from string, to string) ([]Message, error) {
+	ctx := context.Background()
+
+	filter := fmt.Sprintf("from_id:=%s", from)
+
+	query := api.SearchCollectionParams{
+		Q:        pointer.String(to),
+		QueryBy:  pointer.String("to_id"),
+		FilterBy: pointer.String(filter),
+        SortBy: pointer.String("timestamp:desc"),
+	}
+
+	messageRecords, err := ts.Collection("messages").Documents().Search(ctx, &query)
+
+	if err != nil {
+        fmt.Println("err?", err)
+		return nil, err
+	}
+	fmt.Println("err?", err, "found?", (*(*messageRecords).Found))
+
+	messages := make([]Message, 0)
+
+	for _, messageRecord := range *(*messageRecords).Hits {
+		message := Message{
+			ID:        (*messageRecord.Document)["id"].(string),
+			Sender:    (*messageRecord.Document)["from_id"].(string),
+			Recipient: (*messageRecord.Document)["to_id"].(string),
+			Content:   (*messageRecord.Document)["content"].(string),
+			Timestamp: int64((*messageRecord.Document)["timestamp"].(float64)),
+		}
+		messages = append(messages, message)
+	}
+
+    return messages, nil
+
 }
 
 func DropCollections(ts *typesense.Client) error {
@@ -72,6 +174,8 @@ func DropCollections(ts *typesense.Client) error {
 }
 
 func CreateCollections(ts *typesense.Client) error {
+	ctx := context.Background()
+
 	userSchema := &api.CollectionSchema{
 		Name: "users",
 		Fields: []api.Field{
@@ -97,17 +201,19 @@ func CreateCollections(ts *typesense.Client) error {
 				Name: "to_id",
 				Type: "string",
 			},
+			{
+				Name: "timestamp",
+				Type: "int64",
+			},
 		},
 	}
-
-	ctx := context.Background()
 
 	_, err := ts.Collections().Create(ctx, userSchema)
 	if err != nil {
 		return err
 	}
 
-	_, err = ts.Collections().Create(ctx, messageSchema)
+    _, err = ts.Collections().Create(ctx, messageSchema)
 	if err != nil {
 		return err
 	}

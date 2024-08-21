@@ -1,7 +1,6 @@
 package web
 
 import (
-	//"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -23,16 +22,67 @@ func NewHandler() *Handler {
 	}
 }
 
+type IndexPage struct {
+	Handles     []string
+	CurrentUser string
+	FocusedChat string
+	Messages    []Message
+}
+
 func (h *Handler) Index(c echo.Context) error {
 	usernameCookie, err := c.Cookie("username")
 	if err != nil {
-        fmt.Println("failed to get user")
+		fmt.Println("failed to get user")
 		return c.Redirect(http.StatusFound, "/login")
 	}
 
-    username := usernameCookie.Value
+	focusedChatCookie, _ := c.Cookie("focusedChat")
 
-	return c.Render(http.StatusOK, "index.html", username)
+	handles, err := ListUserHandles(h.Ts)
+	if err != nil {
+		fmt.Println("failed to get handles")
+		return err
+	}
+
+	username := usernameCookie.Value
+	focusedChat := ""
+    fmt.Println("fcc?", focusedChatCookie)
+	if focusedChatCookie != nil {
+		focusedChat = focusedChatCookie.Value
+	}
+
+	messages, err := ListMessages(h.Ts, username, focusedChat)
+	if err != nil {
+		fmt.Println("failed to get messages", err)
+		return err
+	}
+
+	viewData := IndexPage{
+		Handles:     handles,
+		CurrentUser: username,
+		FocusedChat: focusedChat,
+        Messages: messages,
+	}
+
+	return c.Render(http.StatusOK, "index.html", viewData)
+}
+
+func (h *Handler) StartChat(c echo.Context) error {
+	handle := ""
+	err := echo.PathParamsBinder(c).String("handle", &handle).BindError()
+	if err != nil {
+		fmt.Println("failed to get user")
+		return err
+	}
+
+ 	cookie := new(http.Cookie)
+	cookie.Name = "focusedChat"
+    cookie.Value = handle
+	cookie.Expires = time.Now().Add(24 * time.Hour)
+    cookie.Path = "/"
+	c.SetCookie(cookie)
+
+	return c.Redirect(http.StatusFound, "/")
 }
 
 type LoginForm struct {
@@ -64,11 +114,11 @@ func (h *Handler) LoginAttempt(c echo.Context) error {
 		return err
 	}
 
-    cookie := new(http.Cookie)
-    cookie.Name = "username"
-    cookie.Value = loginForm.Username
-    cookie.Expires = time.Now().Add(24 * time.Hour)
-    c.SetCookie(cookie)
+	cookie := new(http.Cookie)
+	cookie.Name = "username"
+	cookie.Value = loginForm.Username
+	cookie.Expires = time.Now().Add(24 * time.Hour)
+	c.SetCookie(cookie)
 
-    return c.Redirect(http.StatusFound, "/")
+	return c.Redirect(http.StatusFound, "/")
 }

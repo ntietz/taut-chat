@@ -1,0 +1,11 @@
+{{ define "user_list" }}
+<div id="users-list" class="bg-white outline outline-4 outline-black h-full p-2 flex flex-col" hx-get="/fragment/users" hx-trigger="every 5s" hx-swap="outerHTML">
+  <strong>People</strong>
+
+  {{ range .Handles }}
+  <a href="/start-chat/{{ . }}">{{ . }}</a>
+  {{ end }}
+
+</div>
+{{ end }}
+{{ template "user_list" . }}

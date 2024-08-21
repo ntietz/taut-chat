@@ -1,10 +1,15 @@
 {{ template "html_open" }}
-<main class="py-10 pl-72">
+<main class="w-full h-full">
 
-<div class="px-8">
-
-  <h1>Taut Chat</h1>
-  <p>Hi, {{ . }}.</p>
+<div class="flex flex-col w-full h-full p-2 bg-flagpink">
+  <div class="bg-white outline-4 outline outline-black flex flex-row p-2 justify-between">
+    <div>Taut Chat</div>
+    <div><emph>{{ .CurrentUser }}</emph></div>
+  </div>
+  <div class="flex flex-row h-full w-full">
+    {{ template "user_list" . }}
+    {{ template "chat_window" . }}
+  </div>
 </div>
 </main>
 {{ template "html_close" }}

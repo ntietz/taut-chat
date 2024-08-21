@@ -1,0 +1,29 @@
+{{ define "chat_window" }}
+<div id="chat-window" class="bg-white outline outline-4 outline-black h-full w-full flex flex-col">
+  {{ if .FocusedChat }}
+    <div
+      class="outline outline-2 outline-gray-500 p-2"
+      >Chatting with: <b>{{ .FocusedChat }}</b></div>
+
+    {{ template "fragment_messages" . }}
+
+    <form class="w-full outline-2 outline-gray-500 flex flex-row"
+    >
+      <input id="chat-input" name="message" type="text" class="w-full">
+      <button class="bg-flagblue p-2 h-full"
+        hx-post="/send-chat/{{ .FocusedChat }}"
+        hx-swap="outerHTML"
+        hx-target="#chat-window"
+      >
+        Send
+      </button>
+    </form>
+
+
+  {{ else }}
+    <b>Select someone to chat</b>
+  {{ end }}
+</div>
+{{ end }}
+
+{{ template "chat_window" . }}

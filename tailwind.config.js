@@ -7,6 +7,10 @@ module.exports = {
         'trans': '6px 3px 0px rgb(91, 206, 250), 3px 6px 0px rgb(245, 169, 184)',
         'thicc-pink': '4px 4px 0px rgb(245, 169, 184)',
       },
+      colors: {
+        'flagpink': "#F5A9B8",
+        'flagblue': "#5BCEFA",
+      }
     },
   },
   plugins: [

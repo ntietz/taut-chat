@@ -15,6 +15,10 @@ func CreateServer() *echo.Echo {
 		fmt.Println("", err)
 	}
 
+    fh := FragmentsHandler{
+    	Ts: h.Ts,
+    }
+
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -29,6 +33,12 @@ func CreateServer() *echo.Echo {
 	e.GET("/", h.Index)
 	e.GET("/login", h.Login)
 	e.POST("/login", h.LoginAttempt)
+    e.GET("/start-chat/:handle", h.StartChat)
+    e.POST("/send-chat/:handle", h.SendChat)
+
+	e.GET("/fragment/users", fh.UserList)
+	e.GET("/fragment/chat", fh.ChatWindow)
+	e.GET("/fragment/messages", fh.Messages)
 
 	return e
 }
