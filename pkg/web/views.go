@@ -157,7 +157,7 @@ func (h *Handler) LoginAttempt(c echo.Context) error {
 		return c.Render(http.StatusOK, "login.html", loginForm)
 	}
 
-	_, err := CreateUser(h.Ts, loginForm.Username)
+	err := CreateUser(h.Ts, loginForm.Username)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 
 func CreateServer() *echo.Echo {
 	h := NewHandler()
+    //DropCollections(h.Ts)
 	err := CreateCollections(h.Ts)
 	if err != nil {
 		fmt.Println("", err)

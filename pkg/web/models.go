@@ -28,7 +28,7 @@ type Message struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
-func CreateUser(ts *typesense.Client, handle string) (bool, error) {
+func CreateUser(ts *typesense.Client, handle string) error {
 	ctx := context.Background()
 	query := api.SearchCollectionParams{
 		Q:       pointer.String(handle),
@@ -36,27 +36,24 @@ func CreateUser(ts *typesense.Client, handle string) (bool, error) {
 	}
 	matchingUsers, err := ts.Collection("users").Documents().Search(ctx, &query)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	count := *matchingUsers.Found
-
-	if count == 0 {
-		id := handle
-		user := User{
-			ID:      id,
-			Handle:  handle,
-			Credits: 100,
-		}
-		fmt.Println("Created new user")
-		_, err = ts.Collection("users").Documents().Create(ctx, user)
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	} else {
-		return false, nil
+	if (*matchingUsers.Found) > 0 {
+		return nil
 	}
+
+	id := handle
+	user := User{
+		ID:      id,
+		Handle:  handle,
+		Credits: 100,
+	}
+	_, err = ts.Collection("users").Documents().Create(ctx, user)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func CreateMessage(ts *typesense.Client, from string, to string, content string) error {
@@ -84,14 +81,13 @@ func SearchMessages(ts *typesense.Client, currentUser string, query string) ([]M
 
 	filter := fmt.Sprintf("from_id:=%s || to_id:=%s", currentUser, currentUser)
 	qparams := api.SearchCollectionParams{
-		Q:        pointer.String(query),
-		QueryBy:  pointer.String("content"),
-		FilterBy: pointer.String(filter),
-		SortBy:   pointer.String("timestamp:desc"),
-        HighlightStartTag: pointer.String("<b>"),
-        HighlightEndTag: pointer.String("</b>"),
-        HighlightFullFields: pointer.String("content"),
-
+		Q:                   pointer.String(query),
+		QueryBy:             pointer.String("content"),
+		FilterBy:            pointer.String(filter),
+		SortBy:              pointer.String("timestamp:desc"),
+		HighlightStartTag:   pointer.String("<b>"),
+		HighlightEndTag:     pointer.String("</b>"),
+		HighlightFullFields: pointer.String("content"),
 	}
 
 	messageRecords, err := ts.Collection("messages").Documents().Search(ctx, &qparams)
@@ -105,8 +101,8 @@ func SearchMessages(ts *typesense.Client, currentUser string, query string) ([]M
 	messages := make([]Message, 0)
 
 	for _, messageRecord := range *(*messageRecords).Hits {
-        content := fmt.Sprintf("%v", (*(*messageRecord.Highlights)[0].Value))
-        fmt.Println("messageRecord. highlights?", len(*messageRecord.Highlights))
+		content := fmt.Sprintf("%v", (*(*messageRecord.Highlights)[0].Value))
+		fmt.Println("messageRecord. highlights?", len(*messageRecord.Highlights))
 		message := Message{
 			ID:        (*messageRecord.Document)["id"].(string),
 			Sender:    (*messageRecord.Document)["from_id"].(string),
@@ -123,12 +119,13 @@ func SearchMessages(ts *typesense.Client, currentUser string, query string) ([]M
 
 func ListUserHandles(ts *typesense.Client) ([]string, error) {
 	ctx := context.Background()
+
 	query := api.SearchCollectionParams{
 		Q:       pointer.String("*"),
 		QueryBy: pointer.String("handle"),
 	}
+
 	userRecords, err := ts.Collection("users").Documents().Search(ctx, &query)
-	fmt.Println("handles. err?", err, "found?", (*(*userRecords).Found))
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +166,7 @@ func ListMessagesOneWay(ts *typesense.Client, from string, to string) ([]Message
 	ctx := context.Background()
 
 	filter := fmt.Sprintf("from_id:=%s", from)
+    fmt.Println("filter?", filter)
 
 	query := api.SearchCollectionParams{
 		Q:        pointer.String(to),
@@ -246,10 +244,10 @@ func CreateCollections(ts *typesense.Client) error {
 				Name: "to_id",
 				Type: "string",
 			},
-            {
-                Name: "content",
-                Type: "string",
-            },
+			{
+				Name: "content",
+				Type: "string",
+			},
 			{
 				Name: "timestamp",
 				Type: "int64",
